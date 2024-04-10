@@ -92,13 +92,15 @@ end
 -- TODO: Implement this in a way that allows players to be on multiple channels
 --- sets the players current radio channel
 ---@param source number the player to set the channel of
----@param _radioChannel number the radio channel to set them to (or 0 to remove them from radios)
+---@param _radioChannel table the radio channel to set them to (or 0 to remove them from radios)
 function setPlayerRadio(source, _radioChannel)
 	if GetConvarInt('voice_enableRadios', 1) ~= 1 then return end
 	voiceData[source] = voiceData[source] or defaultTable(source)
 	local isResource = GetInvokingResource()
 	local plyVoice = voiceData[source]
-	local radioChannel = tonumber(_radioChannel)
+	local radioChannel = tonumber(_radioChannel["PriFreq"])
+	local secondaryRadioChannel = tonumber(_radioChannel["SecFreq"])
+	local ATCRadioChannel = tonumber(_radioChannel["ATCFreq"])
 	if not radioChannel then
 		-- only full error if its sent from another server-side resource
 		if isResource then
@@ -123,12 +125,35 @@ function setPlayerRadio(source, _radioChannel)
 		removePlayerFromRadio(source, plyVoice.radio)
 		Player(source).state.radioChannel = 0
 	end
+
+	--- Secondary Channel
+	if secondaryRadioChannel ~= 0 then
+		if plyVoice.secradio > 0 then
+			removePlayerFromRadio(source, plyVoice.secradio)
+		end
+		local wasAdded = addPlayerToRadio(source, secondaryRadioChannel)
+		Player(source).state.secondaryRadioChannel = wasAdded and secondaryRadioChannel or 0
+	elseif secondaryRadioChannel == 0 then
+		removePlayerFromRadio(source, plyVoice.secradio)
+		Player(source).state.secondaryRadioChannel = 0
+	end
+	---ATCRadioChannel
+	if ATCRadioChannel ~= 0 then
+		if plyVoice.atcradio > 0 then
+			removePlayerFromRadio(source, plyVoice.atcradio)
+		end
+		local wasAdded = addPlayerToRadio(source, ATCRadioChannel)
+		Player(source).state.ATCRadioChannel = wasAdded and ATCRadioChannel or 0
+	elseif ATCRadioChannel == 0 then
+		removePlayerFromRadio(source, plyVoice.atcradio)
+		Player(source).state.ATCRadioChannel = 0
+	end
 end
 
 exports('setPlayerRadio', setPlayerRadio)
 
-RegisterNetEvent('pma-voice:setPlayerRadio', function(radioChannel)
-	setPlayerRadio(source, radioChannel)
+RegisterNetEvent('pma-voice:setPlayerRadio', function(radioChannels)
+	setPlayerRadio(source, radioChannels)
 end)
 
 --- syncs the player talking across all radio members

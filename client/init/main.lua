@@ -4,6 +4,8 @@ local mutedPlayers = {}
 local volumes = {
 	-- people are setting this to 1 instead of 1.0 and expecting it to work.
 	['radio'] = GetConvarInt('voice_defaultRadioVolume', 60) / 100,
+	['secradio'] = GetConvarInt('voice_defaultRadioVolume', 60) / 100,
+	['atcradio'] = GetConvarInt('voice_defaultRadioVolume', 60) / 100,
 	['call'] = GetConvarInt('voice_defaultCallVolume', 60) / 100,
 	['click_on'] = GetConvarInt('voice_onClickVolume', 10) / 100,
 	['click_off'] = GetConvarInt('voice_offClickVolume', 3) / 100,
@@ -50,6 +52,20 @@ exports("setCallVolume", function(vol)
 end)
 exports('getCallVolume', function()
 	return volumes['call'] * 100
+end)
+
+exports('setSecRadioVolume', function(vol)
+	setVolume(vol, 'secradio')
+end)
+exports('getSecRadioVolume', function()
+	return volumes['secradio'] * 100
+end)
+
+exports('setatcRadioVolume', function(vol)
+	setVolume(vol, 'atcradio')
+end)
+exports('getatcRadioVolume', function()
+	return volumes['atcradio'] * 100
 end)
 
 

@@ -1,4 +1,4 @@
-local radioChannel = 0
+local radioChannels = {}
 local radioNames = {}
 local disableRadioAnim = false
 
@@ -44,12 +44,17 @@ RegisterNetEvent('pma-voice:syncRadioData', syncRadioData)
 function setTalkingOnRadio(plySource, enabled)
 	radioData[plySource] = enabled
 
-	if not isRadioEnabled() then return logger.info("[radio] Ignoring setTalkingOnRadio. radioEnabled: %s disableRadio: %s", radioEnabled, LocalPlayer.state.disableRadio) end
+	if not isRadioEnabled() then
+		return logger.info(
+			"[radio] Ignoring setTalkingOnRadio. radioEnabled: %s disableRadio: %s", radioEnabled,
+			LocalPlayer.state.disableRadio)
+	end
 	-- If we're on a call we don't want to toggle their voice disabled this will break calls.
 	local enabled = enabled or callData[plySource]
 	toggleVoice(plySource, enabled, 'radio')
 	playMicClicks(enabled)
 end
+
 RegisterNetEvent('pma-voice:setTalkingOnRadio', setTalkingOnRadio)
 
 --- event addPlayerToRadio
@@ -66,6 +71,7 @@ function addPlayerToRadio(plySource, plyRadioName)
 		addVoiceTargets(radioData, callData)
 	end
 end
+
 RegisterNetEvent('pma-voice:addPlayerToRadio', addPlayerToRadio)
 
 --- event removePlayerFromRadio
@@ -110,12 +116,12 @@ end)
 
 --- function setRadioChannel
 --- sets the local players current radio channel and updates the server
----@param channel number the channel to set the player to, or 0 to remove them.
-function setRadioChannel(channel)
+---@param channels table the channel to set the player to, or 0 to remove them.
+function setRadioChannel(channels)
 	if GetConvarInt('voice_enableRadios', 1) ~= 1 then return end
-	type_check({ channel, "number" })
-	TriggerServerEvent('pma-voice:setPlayerRadio', channel)
-	radioChannel = channel
+	type_check({ channels, "table" })
+	TriggerServerEvent('pma-voice:setPlayerRadio', channels)
+	radioChannels = channels
 end
 
 --- exports setRadioChannel
@@ -127,16 +133,37 @@ exports('SetRadioChannel', setRadioChannel)
 --- exports removePlayerFromRadio
 --- sets the local players current radio channel and updates the server
 exports('removePlayerFromRadio', function()
-	setRadioChannel(0)
+	setRadioChannel({
+		["PriFreq"] = 0,
+		["SecFreq"] = 0,
+		["ATCFreq"] = 0
+	}
+
+	)
 end)
 
 --- exports addPlayerToRadio
 --- sets the local players current radio channel and updates the server
 ---@param _radio number the channel to set the player to, or 0 to remove them.
-exports('addPlayerToRadio', function(_radio)
+---@param freq string PriFreq, SecFreq or ATCFreq
+exports('addPlayerToRadio', function(_radio, freq)
 	local radio = tonumber(_radio)
-	if radio then
-		setRadioChannel(radio)
+	if freq then
+		if radio then
+			setRadioChannel(
+				{
+					[freq] = radio
+				}
+			)
+		end
+	else
+		if radio then
+			setRadioChannel(
+				{
+					["PriFreq"] = radio
+				}
+			)
+		end
 	end
 end)
 
@@ -187,7 +214,7 @@ RegisterCommand('+radiotalk', function()
 	if isDead() then return end
 	if not isRadioEnabled() then return end
 	if not radioPressed then
-		if radioChannel > 0 then
+		if radioChannel["PriFreq"] > 0 then
 			logger.info('[radio] Start broadcasting, update targets and notify server.')
 			addVoiceTargets(radioData, callData)
 			TriggerServerEvent('pma-voice:setTalkingOnRadio', true)
@@ -208,9 +235,10 @@ RegisterCommand('+radiotalk', function()
 					end
 					if shouldPlayAnimation and HasAnimDictLoaded("random@arrests") then
 						if not IsEntityPlayingAnim(PlayerPedId(), "random@arrests", "generic_radio_enter", 3) then
-							TaskPlayAnim(PlayerPedId(), "random@arrests", "generic_radio_enter", 8.0, 2.0, -1, 50, 2.0, false,
+							TaskPlayAnim(PlayerPedId(), "random@arrests", "generic_radio_enter", 8.0, 2.0, -1, 50, 2.0,
 								false,
-							false)
+								false,
+								false)
 						end
 					end
 					SetControlNormal(0, 249, 1.0)
@@ -260,6 +288,7 @@ function syncRadio(_radioChannel)
 	logger.info('[radio] radio set serverside update to radio %s', radioChannel)
 	radioChannel = _radioChannel
 end
+
 RegisterNetEvent('pma-voice:clSetPlayerRadio', syncRadio)
 
 
@@ -290,4 +319,3 @@ local function removeRadioDisableBit(bit)
 	LocalPlayer.state:set("disableRadio", curVal, true)
 end
 exports("removeRadioDisableBit", removeRadioDisableBit)
-
